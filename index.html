@@ -1,162 +1,295 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ChiquenRun</title>
-    <style>
-        body { 
-            margin: 0; padding: 0; overflow: hidden; 
-            background: #000; font-family: 'Arial', sans-serif; 
-            display: flex; justify-content: center; align-items: center; 
-            height: 100vh; width: 100vw;
-        }
+<!DOCTYPE html> 
+<html lang="gl">  
+<head>  
+    <meta charset="UTF-8">  
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">  
+    <title>Festival Run</title>  
+    <style>  
+        /* El secreto está aquí: obligamos al contenedor a mantener la proporción */
+        body { margin: 0; background: #000; overflow: hidden; touch-action: none; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; width: 100vw; }  
         
+        #game-container {
+            position: relative;
+            width: 100vh; /* Se basa en la altura para no pasarse nunca */
+            height: 100vh;
+            aspect-ratio: 480 / 854; /* Proporción vertical de tu juego */
+            max-width: 100vw;
+            max-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
         canvas { 
             display: block; 
-            box-shadow: 0 0 20px rgba(0,0,0,0.5);
-            background: #444;
-            /* Forzamos que se vea lo mejor posible */
-            image-rendering: -webkit-optimize-contrast;
-            image-rendering: crisp-edges;
-        }
+            image-rendering: pixelated; 
+            width: 100%; 
+            height: 100%; 
+            object-fit: contain; /* Esto hace que siempre se vea vertical */
+        }  
 
-        /* Cartel para forzar modo vertical */
-        #orientation-warning {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: #111; color: white;
-            z-index: 999; text-align: center;
-            justify-content: center; align-items: center;
-            flex-direction: column;
-            padding: 20px;
-        }
-
-        /* Si el móvil se pone de lado (horizontal), mostramos el aviso */
-        @media (orientation: landscape) {
-            #orientation-warning { display: flex; }
-            #gameCanvas { display: none; }
-            #overlay { display: none; }
-        }
-
-        #overlay {
-            position: absolute; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.85); color: white;
-            display: flex; justify-content: center; align-items: center;
-            z-index: 100; cursor: pointer; text-align: center;
-            flex-direction: column;
-        }
-
-        .btn-start {
-            background: #ffcc00; color: #000;
-            padding: 15px 30px; border-radius: 30px;
-            font-weight: bold; font-size: 1.5rem; margin-top: 20px;
-            border: none; animation: pulse 1.5s infinite;
-        }
-
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.1); }
-            100% { transform: scale(1); }
-        }
+        #timer-display { position: absolute; top: 5%; left: 50%; transform: translateX(-50%); color: #8e44ad; font-size: 8vh; font-weight: bold; text-shadow: 3px 3px #000; display: none; z-index: 10; }  
+        #score-box { position: absolute; bottom: 2%; left: 5%; background: rgba(0, 0, 0, 0.8); border: 2px solid #8e44ad; padding: 1vh 2vh; border-radius: 10px; color: #fff; display: none; z-index: 10; }  
+        #score-box span { color: #8e44ad; font-size: 1.5vh; text-transform: uppercase; }  
+        #score { font-size: 3vh; font-weight: bold; }  
+        #lives-box { position: absolute; bottom: 2%; right: 5%; background: rgba(0, 0, 0, 0.8); border: 2px solid #8e44ad; padding: 1vh; border-radius: 10px; display: none; flex-direction: row; gap: 1vh; z-index: 10; }  
+        .vida-slot { width: 5vh; height: 5vh; background: rgba(142, 68, 173, 0.1); border: 1px solid #8e44ad; border-radius: 6px; display: flex; align-items: center; justify-content: center; }  
+        .vida-icon { width: 90%; height: auto; }  
+        #meta-container { position: absolute; top: 2%; left: 50%; transform: translateX(-50%); display: none; font-weight: bold; font-size: 3vh; z-index: 20; text-shadow: 2px 2px #000; }  
+        #meta-label { color: #00ff00; margin-right: 10px; }  
+        #meta-value { color: #ffffff; }  
+        #ui-bottom-f2 { position: absolute; bottom: 5%; width: 100%; display: none; justify-content: space-around; color: #ffff00; font-size: 2vh; z-index: 10; pointer-events: none; }  
+        
+        .video-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; display: none; z-index: 9999; object-fit: contain; opacity: 0; transition: opacity 0.3s; }
+        .video-active { display: block !important; opacity: 1; }
+        #selection { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: none; flex-direction: column; align-items: center; justify-content: center; color: white; z-index: 20; }  
+        #selection h2 { color: #8e44ad; text-shadow: 2px 2px #000; font-size: 4vh; margin-bottom: 5vh; text-align: center; }  
+        .option-container { display: flex; gap: 3vh; }  
+        .veh-column { display: flex; flex-direction: column; align-items: center; gap: 2vh; cursor: pointer; }  
+        .veh-img-box { border: 3px solid #8e44ad; border-radius: 20px; background: #111; width: 20vh; height: 35vh; display: flex; align-items: center; justify-content: center; }  
+        .veh-img-box img { width: 80%; }  
+        .veh-btn { border: 2px solid #ffff00; padding: 1.5vh 0; border-radius: 10px; font-weight: bold; color: #ffff00; width: 20vh; text-align: center; background: rgba(255,255,0,0.1); }  
+        .tutorial-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-size: contain; background-position: center; background-repeat: no-repeat; background-color: black; z-index: 150; display: none; cursor: pointer; }  
+        #screen-concierto { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #000; display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 110; text-align: center; cursor: pointer; }  
+        #msg { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #ff0000; font-size: 6vh; font-weight: bold; display: none; text-shadow: 4px 4px #000; text-align: center; z-index: 600; }  
     </style>
-</head>
-<body>
+</head>  
+<body>  
+    <div id="game-container">
+        <div id="tut1" class="tutorial-overlay" onclick="iniciarJuegoFase1()"></div>  
+        <div id="tut2" class="tutorial-overlay" style="background-image: url('tutorial_fase2.png');" onclick="iniciarJuegoFase2()"></div>  
+        
+        <div id="timer-display">30</div>  
+        <div id="score-box"><span>PUNTOS</span><div id="score">0</div></div>  
+        <div id="lives-box"><div class="vida-slot" id="slot-1"></div><div class="vida-slot" id="slot-2"></div><div class="vida-slot" id="slot-3"></div></div>  
+        <div id="meta-container"><span id="meta-label">META</span><span id="meta-value">100%</span></div>  
+        <div id="ui-bottom-f2"><div>PUNTOS: <span id="scoreF2">0</span></div><div>GAS: <span id="gasF2">100</span>%</div></div>  
 
-    <div id="orientation-warning">
-        <h1 style="font-size: 3rem;">🔄</h1>
-        <h2>MODO VERTICAL NECESARIO</h2>
-        <p>Por favor, gira tu dispositivo para poder jugar.</p>
+        <div id="selection">  
+            <h2>Escolle o teu vehículo</h2>  
+            <div class="option-container">  
+                <div class="veh-column" onclick="mostrarTutorial1('moto')">   
+                    <div class="veh-img-box"><img src="motero.png"></div>  
+                    <div class="veh-btn">MOTO</div>  
+                </div>  
+                <div class="veh-column" onclick="mostrarTutorial1('coche')">  
+                    <div class="veh-img-box"><img src="coche.png"></div>  
+                    <div class="veh-btn">COCHE</div>  
+                </div>  
+            </div>  
+        </div>  
+
+        <div id="screen-concierto" onclick="mostrarTutorial2()">  
+            <h1 style="color:#0f0">🎸 TOCA AQUÍ 🎸</h1>  
+            <p style="color:#fff">PARA CHEGAR AO CONCERTO</p>  
+        </div>
+
+        <div id="msg">XOGO REMATADO</div>  
+        <canvas id="gameCanvas"></canvas>  
     </div>
 
-    <div id="overlay">
-        <h1 style="font-size: 2.5rem; color: #ffcc00;">CHIQUEN RUN</h1>
-        <p>Esquiva los coches y sobrevive</p>
-        <div class="btn-start">¡TOCA PARA JUGAR!</div>
-    </div>
+    <video id="final-video" class="video-overlay" playsinline muted autoplay></video>  
+    <video id="fase2-video" class="video-overlay" playsinline muted autoplay src="video_concierto.mp4"></video>  
 
-    <canvas id="gameCanvas"></canvas>
+<script>  
+    const canvas = document.getElementById('gameCanvas');  
+    const ctx = canvas.getContext('2d');  
+    const finalVideo = document.getElementById('final-video');  
+    const fase2Video = document.getElementById('fase2-video');  
+      
+    // Ajuste fijo de resolución para velocidad
+    const GW = 480; const GH = 854;
+    canvas.width = GW; canvas.height = GH;
 
-    <script>
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        const overlay = document.getElementById('overlay');
+    const audio = {  
+        bg1: new Audio('musica_juego.mp3'), bg2: new Audio('musica_fondo.mp3'),  
+        crash: new Audio('choque.mp3'), point: new Audio('sonido_pollo.mp3'),  
+        bueno: new Audio('sonido_bueno.mp3'), malo: new Audio('sonido_malo.wav')  
+    };  
+    audio.bg1.loop = true; audio.bg2.loop = true;
 
-        // AJUSTES DE RENDIMIENTO
-        // Usamos una resolución interna fija para que no dependa de la potencia del móvil
-        const GAME_WIDTH = 480;
-        const GAME_HEIGHT = 854;
+    const sources = {  
+        intro: 'intro.png', motero: 'motero.png', coche: 'coche.png', pollo: 'pollo.png',  
+        guardia: 'guardia.png', pizza: 'pizza.png', muralla: 'muralla.png', vida: 'vida.png', 
+        puente: 'puente.png', fondoF2: 'fondoentero.png', comidaF2: 'comida.png',   
+        buenoF2: 'bueno.png', malo1F2: 'malo1.png', malo2F2: 'malo2.png', 
+        venenoF2: 'veneno.png', moteroF2: 'motero_fase2.png'  
+    };  
 
-        function resize() {
-            const scale = Math.min(window.innerWidth / GAME_WIDTH, window.innerHeight / GAME_HEIGHT);
-            canvas.width = GAME_WIDTH;
-            canvas.height = GAME_HEIGHT;
-            canvas.style.width = (GAME_WIDTH * scale) + 'px';
-            canvas.style.height = (GAME_HEIGHT * scale) + 'px';
-        }
+    const imgs = {};
+    for (let k in sources) { imgs[k] = new Image(); imgs[k].src = sources[k]; }  
 
-        window.addEventListener('resize', resize);
-        resize();
+    let lives = 3, timeLeft = 30, score = 0, gas = 100, selectedVeh = 'moto';  
+    let state = 'START', obs = [], itemsF2 = [], mY = 0, bridgeMode = false;  
+    let lastTime = Date.now(), framesF2 = 0, videoIniciado = false, bridgeTimer = 0; 
+    const p = { lane: 1, x: GW/2, y: 0, w: 85, h: 110, vy: 0, jumps: 0 };  
+    const alturasF2 = [20, 165, 315];  
 
-        // VARIABLES DEL JUEGO
-        let gameRunning = false;
-        let lastTime = 0;
+    function updateUI() {  
+        document.getElementById('timer-display').innerText = Math.max(0, Math.ceil(timeLeft));  
+        document.getElementById('score').innerText = score;  
+        document.getElementById('scoreF2').innerText = score;  
+        document.getElementById('gasF2').innerText = Math.floor(gas);  
+        let metaRestante = Math.max(0, Math.floor(100 - (framesF2 / 6000 * 100)));  
+        document.getElementById('meta-value').innerText = metaRestante + "%";  
+        for(let i=1; i<=3; i++) {  
+            const slot = document.getElementById('slot-' + i);  
+            if(slot) slot.innerHTML = (i <= lives) ? `<img src="vida.png" class="vida-icon">` : '';  
+        }  
+    }  
 
-        // CARGA DE IMÁGENES (Asegúrate que los nombres coinciden en tu GitHub)
-        const sprites = {
-            pollo: new Image(),
-            fondo: new Image(),
-            coche: new Image()
-        };
-        sprites.pollo.src = 'pollo.png';
-        sprites.fondo.src = 'fondoentero.png';
-        sprites.coche.src = 'coche.png';
+    window.mostrarTutorial1 = function(type) {  
+        selectedVeh = type;  
+        finalVideo.src = (selectedVeh === 'moto') ? 'moto_final.mp4' : 'coche_final.mp4';  
+        document.getElementById('selection').style.display = 'none';  
+        const t1 = document.getElementById('tut1');  
+        t1.style.backgroundImage = `url('tutorial_fase1_${type}.png')`;  
+        t1.style.display = 'block'; state = 'TUTORIAL1';  
+    }  
 
-        // CARGA DE SONIDO (Sin tildes para evitar errores)
-        const musicaFondo = new Audio('musica_fondo.mp3');
-        musicaFondo.loop = true;
+    window.iniciarJuegoFase1 = function() {  
+        document.getElementById('tut1').style.display = 'none';  
+        p.w = (selectedVeh === 'moto') ? 110 : 85;  
+        p.y = GH - 180;  
+        state = 'PLAYING'; audio.bg1.volume = 0.5; audio.bg1.play();  
+        document.getElementById('timer-display').style.display = 'block';  
+        document.getElementById('score-box').style.display = 'block';  
+        document.getElementById('lives-box').style.display = 'flex';  
+        lastTime = Date.now();  
+    }  
 
-        // INICIO DEL JUEGO
-        overlay.addEventListener('click', () => {
-            overlay.style.display = 'none';
-            gameRunning = true;
-            musicaFondo.play().catch(e => console.log("Audio bloqueado"));
-            requestAnimationFrame(mainLoop);
-        });
+    function playVideoDirect(vid) {
+        vid.style.display = 'block'; vid.play();
+        vid.onplaying = () => { vid.classList.add('video-active'); };
+    }
 
-        // BUCLE PRINCIPAL (A 60 FPS)
-        function mainLoop(timestamp) {
-            if (!gameRunning) return;
+    function playFinalVideo() {  
+        playVideoDirect(finalVideo);
+        finalVideo.onended = () => {   
+            audio.bg1.pause(); finalVideo.classList.remove('video-active');
+            finalVideo.style.display = 'none';  
+            document.getElementById('screen-concierto').style.display = 'flex';  
+        };  
+    }  
 
-            // DeltaTime ayuda a que el juego vaya a la misma velocidad en cualquier móvil
-            const dt = timestamp - lastTime;
-            lastTime = timestamp;
+    window.mostrarTutorial2 = function() {  
+        document.getElementById('screen-concierto').style.display = 'none';  
+        document.getElementById('tut2').style.display = 'block'; state = 'TUTORIAL2';  
+    }  
 
-            actualizar(dt);
-            dibujar();
+    window.iniciarJuegoFase2 = function() {  
+        document.getElementById('tut2').style.display = 'none';  
+        document.getElementById('ui-bottom-f2').style.display = 'flex';  
+        document.getElementById('meta-container').style.display = 'block';  
+        gas = 100; framesF2 = 0; itemsF2 = []; p.x = 80; p.y = GH * 0.7; p.jumps = 0;
+        inicializarObjetosF2(); audio.bg2.play(); state = 'FASE2';  
+    }  
 
-            requestAnimationFrame(mainLoop);
-        }
+    function inicializarObjetosF2() {  
+        const total = 85; const intervalo = (100 * 60 * 0.92) / total;  
+        for (let i = 0; i < total; i++) {  
+            let tipo, img, w, h, fTarget = (i + 1) * intervalo;  
+            if (i === 45) { tipo='comida'; img=imgs.comidaF2; w=85; h=85; }  
+            else if (i === total - 2) { tipo='veneno'; img=imgs.venenoF2; w=80; h=80; }  
+            else {  
+                let r = Math.random();  
+                if (r < 0.25) { tipo='pollo'; img=imgs.pollo; w=90; h=90; }  
+                else if (r < 0.50) { tipo='bueno'; img=imgs.buenoF2; w=100; h=70; }  
+                else if (r < 0.75) { tipo='malo'; img=imgs.malo1F2; w=70; h=70; }  
+                else { tipo='malo'; img=imgs.malo2F2; w=50; h=40; }  
+            }  
+            itemsF2.push({ fTarget, x: GW + 200, yB: alturasF2[Math.floor(Math.random()*3)], w, h, tipo, img, rec: false });  
+        }  
+    }  
 
-        function actualizar(dt) {
-            // AQUÍ PEGAS TU LÓGICA: movimiento de coches, colisiones, etc.
-            // Ejemplo: coche.x -= velocidad * (dt / 16);
-        }
+    window.addEventListener('touchstart', (e) => {  
+        if (state === 'START') { state = 'SELECTING'; document.getElementById('selection').style.display = 'flex'; return; }  
+        if (state === 'PLAYING' && !bridgeMode) {  
+            const rect = canvas.getBoundingClientRect();
+            const touchX = (e.touches[0].clientX - rect.left) / rect.width * GW;
+            if (touchX < GW / 2) { if (p.lane > 0) p.lane--; }  
+            else { if (p.lane < 2) p.lane++; }  
+        }  
+        if (state === 'FASE2') { if (p.jumps < 3) { p.vy = -12; p.jumps++; } }  
+    });  
 
-        function dibujar() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // Dibujar fondo
-            if (sprites.fondo.complete) {
-                ctx.drawImage(sprites.fondo, 0, 0, canvas.width, canvas.height);
-            }
+    function spawn() {  
+        if (state !== 'PLAYING' || bridgeMode) return;  
+        const l = Math.floor(Math.random() * 3); const r = Math.random();  
+        let t = 'guardia', s = 6, w = 110, h = 120;  
+        if (r < 0.4) { t = 'pollo'; s = 5.5; w = 80; h = 80; }   
+        else if (r < 0.7) { t = 'pizza'; s = 7.5; w = 90; h = 90; }  
+        obs.push({ x: (GW/3)*l + (GW/6)-w/2, y: -150, w, h, type: t, speed: s, vx: 0, isHit: false });  
+    }  
+    setInterval(spawn, 900);  
 
-            // Dibujar pollo (ejemplo posición central)
-            if (sprites.pollo.complete) {
-                ctx.drawImage(sprites.pollo, canvas.width/2 - 25, canvas.height - 100, 50, 50);
-            }
-        }
-    </script>
-</body>
+    fase2Video.onended = () => { window.location.reload(); };
+
+    function draw() {  
+        const now = Date.now();
+        const dt = (now - lastTime) / 16.66;
+        lastTime = now;
+
+        if (state === 'GAMEOVER') {  
+            ctx.fillStyle = "black"; ctx.fillRect(0, 0, GW, GH);  
+            document.getElementById('msg').style.display = 'block'; 
+            setTimeout(()=>window.location.reload(), 2500);
+            return;  
+        }  
+        ctx.clearRect(0, 0, GW, GH);  
+        
+        if (state === 'START' || state === 'SELECTING' || state === 'TUTORIAL1') {  
+            if (imgs.intro && imgs.intro.complete) ctx.drawImage(imgs.intro, 0, 0, GW, GH);  
+        }   
+        else if (state === 'PLAYING' || state === 'ENDING') {  
+            let currentSpeed = (bridgeMode ? 4.5 : 8.75) * dt; 
+            if (state === 'PLAYING') {  
+                timeLeft -= (dt * 0.016);  
+                if (timeLeft <= 0 && !bridgeMode) { timeLeft = 0; bridgeMode = true; p.lane = 1; bridgeTimer = 100; } 
+                mY = (mY + currentSpeed) % GH; updateUI();  
+            }  
+            const bg = bridgeMode ? imgs.puente : imgs.muralla;  
+            if(bg && bg.complete) { ctx.drawImage(bg, 0, mY - GH, GW, GH); ctx.drawImage(bg, 0, mY, GW, GH); }  
+            let targetX = (GW/3)*p.lane + (GW/6)-p.w/2; p.x += (targetX - p.x) * 0.2 * dt;  
+            if (bridgeMode && state === 'PLAYING') { bridgeTimer -= dt; if (bridgeTimer <= 0) state = 'ENDING'; }  
+            if (state === 'ENDING') { p.y -= 8 * dt; if (p.y + p.h < 0) { state = 'VIDEO'; playFinalVideo(); } }  
+            for (let i = obs.length - 1; i >= 0; i--) {  
+                let o = obs[i]; o.y += (bridgeMode ? o.speed * 0.5 : o.speed) * dt; o.x += o.vx * dt;  
+                if (state === 'PLAYING' && !o.isHit && p.x < o.x+o.w-25 && p.x+p.w > o.x+25 && p.y < o.y+o.h-25 && p.y+p.h > o.y+25) {  
+                    if (o.type === 'pollo') { score += 100; audio.point.play(); obs.splice(i,1); }   
+                    else { lives--; updateUI(); audio.crash.play(); if(lives <= 0) state='GAMEOVER'; else { o.isHit=true; o.vx = (p.lane===0)?15:-15; } }  
+                }  
+                const oImg = imgs[o.type]; if(oImg) ctx.drawImage(oImg, o.x, o.y, o.w, o.h);  
+            }  
+            const pImg = (selectedVeh === 'coche' ? imgs.coche : imgs.motero); if(pImg) ctx.drawImage(pImg, p.x, p.y, p.w, p.h);  
+        }  
+        else if (state === 'FASE2') {  
+            let prog = framesF2 / 6000; if (prog < 1) framesF2 += dt; else prog = 1;  
+            const altJ = GH * 0.45; const margS = (GH - altJ) / 2;  
+            if(imgs.fondoF2.complete) {  
+                let ratio = imgs.fondoF2.width / imgs.fondoF2.height;  
+                let aF = altJ * ratio; ctx.drawImage(imgs.fondoF2, -(prog * (aF - GW)), margS, aF, altJ);  
+            }  
+            ctx.fillStyle = "black"; ctx.fillRect(0, 0, GW, margS); ctx.fillRect(0, margS + altJ, GW, GH);  
+            itemsF2.forEach(it => {  
+                if(!it.rec && framesF2 >= it.fTarget - 180) {  
+                    it.x -= (GW / 160) * dt; let yPos = (margS + altJ) - it.h - it.yB;  
+                    if(it.img && it.img.complete) ctx.drawImage(it.img, it.x, yPos, it.w, it.h);  
+                    if(p.x < it.x+it.w-20 && p.x+105 > it.x+20 && p.y < yPos+it.h-20 && p.y+165 > yPos+20) {  
+                        it.rec = true; if(it.tipo==='pollo') {score+=100; audio.point.play();} if(it.tipo==='bueno'){gas=Math.min(100, gas+15); audio.bueno.play();} if(it.tipo==='malo'){gas-=10; audio.malo.play();} if(it.tipo==='veneno'){gas=0; audio.malo.play();} if(it.tipo==='comida'){score+=500; audio.point.play();} updateUI();  
+                    }  
+                }  
+            });  
+            let sueloY = (margS + altJ) - 165 - 15; p.vy += 0.55 * dt; p.y += p.vy * dt;   
+            if(p.y > sueloY){ p.y = sueloY; p.vy = 0; p.jumps = 0; }   
+            if(gas <= 0) state = 'GAMEOVER';  
+            if(imgs.moteroF2.complete) ctx.drawImage(imgs.moteroF2, p.x, p.y, 105, 165);  
+            updateUI();  
+            if(prog >= 1 && !videoIniciado) { videoIniciado = true; canvas.style.display = 'none'; playVideoDirect(fase2Video); }  
+        }  
+        requestAnimationFrame(draw);  
+    }  
+    draw();  
+</script>  
+</body>  
 </html>

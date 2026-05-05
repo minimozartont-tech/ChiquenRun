@@ -18,13 +18,10 @@
         #meta-value { color: #ffffff; }  
         #ui-bottom-f2 { position: absolute; bottom: 5%; width: 100%; display: none; justify-content: space-around; color: #ffff00; font-size: 18px; z-index: 10; pointer-events: none; }  
         
-        /* Solución para el icono de Play */
         .video-overlay { 
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
             background: #000; display: none; z-index: 9999; object-fit: cover;
-            opacity: 0; transition: opacity 0.3s;
         }
-        .video-active { display: block !important; opacity: 1; }
 
         #fase2-video { 
             top: 50%; left: 50%; transform: translate(-50%, -50%); 
@@ -53,8 +50,8 @@
         <p>PARA CHEGAR AO CONCERTO</p>  
     </div>  
     
-    <video id="final-video" class="video-overlay" playsinline muted autoplay preload="auto"></video>  
-    <video id="fase2-video" class="video-overlay" playsinline muted autoplay preload="auto" src="video_concierto.mp4"></video>  
+    <video id="final-video" class="video-overlay" playsinline preload="auto"></video>  
+    <video id="fase2-video" class="video-overlay" playsinline preload="auto" src="video_concierto.mp4"></video>  
 
     <div id="timer-display">30</div>  
     <div id="score-box"><span>PUNTOS</span><div id="score">0</div></div>  
@@ -108,7 +105,9 @@
     const imgs = {};
     let lives = 3, timeLeft = 30, score = 0, gas = 100, selectedVeh = 'moto';  
     let state = 'START', obs = [], itemsF2 = [], mY = 0, bridgeMode = false;  
-    let lastTimeUpdate = 0, framesF2 = 0, videoIniciado = false, bridgeTimer = 0; 
+    let lastTimeUpdate = 0, framesF2 = 0, videoIniciado = false, bridgeTimer = 0;
+    // FIX LENTITUD: controlar si el spawn está activo
+    let spawnInterval = null;
     const p = { lane: 1, x: canvas.width/2, y: 0, w: 85, h: 110, vy: 0, jumps: 0 };  
     const alturasF2 = [20, 165, 315];  
 
@@ -131,9 +130,15 @@
         }  
     }  
 
-    // Función de reinicio maestro
     function restartGame() {
         window.location.replace(window.location.href.split('#')[0].split('?')[0]);
+    }
+
+    // FIX LENTITUD: función para ocultar toda la UI de fase 1
+    function ocultarUIFase1() {
+        document.getElementById('timer-display').style.display = 'none';
+        document.getElementById('score-box').style.display = 'none';
+        document.getElementById('lives-box').style.display = 'none';
     }
 
     window.mostrarTutorial1 = function(type) {  
@@ -151,43 +156,62 @@
         document.getElementById('tut1').style.display = 'none';  
         p.w = (selectedVeh === 'moto') ? 110 : 85;  
         p.y = canvas.height - 180;  
-        state = 'PLAYING'; audio.bg1.volume = 0.5; audio.bg1.play();  
+        state = 'PLAYING';
+        audio.bg1.volume = 0.5;
+        audio.bg1.play();
         document.getElementById('timer-display').style.display = 'block';  
         document.getElementById('score-box').style.display = 'block';  
         document.getElementById('lives-box').style.display = 'flex';  
-        lastTimeUpdate = Date.now();  
+        lastTimeUpdate = Date.now();
+        // FIX LENTITUD: iniciar spawn solo al empezar fase 1
+        if (spawnInterval) clearInterval(spawnInterval);
+        spawnInterval = setInterval(spawn, 900);
     }  
 
+    // FIX VÍDEO: función robusta para reproducir vídeo en GitHub Pages
     function playVideoDirect(vid) {
         vid.style.display = 'block';
-        vid.play();
-        vid.onplaying = () => { vid.classList.add('video-active'); };
+        vid.muted = true; // necesario para autoplay en navegadores móviles
+        const playPromise = vid.play();
+        if (playPromise !== undefined) {
+            playPromise.catch(() => {
+                // Si autoplay falla, mostrar pantalla de toque para iniciar
+                vid.style.cursor = 'pointer';
+                vid.onclick = () => { vid.play(); vid.onclick = null; };
+            });
+        }
     }
 
-    function playFinalVideo() {  
+    function playFinalVideo() {
+        // FIX SUPERPOSICIÓN: ocultar UI fase 1 antes de reproducir vídeo
+        ocultarUIFase1();
+        // FIX LENTITUD: detener spawn al salir de fase 1
+        if (spawnInterval) { clearInterval(spawnInterval); spawnInterval = null; }
+        obs = [];
         playVideoDirect(finalVideo);
         finalVideo.onended = () => {   
             audio.bg1.pause();  
-            finalVideo.classList.remove('video-active');
-            finalVideo.style.display = 'none';  
-            document.getElementById('timer-display').style.display = 'none';  
-            document.getElementById('score-box').style.display = 'none';  
-            document.getElementById('lives-box').style.display = 'none';  
+            finalVideo.style.display = 'none';
             document.getElementById('screen-concierto').style.display = 'flex';  
         };  
     }  
 
     window.mostrarTutorial2 = function() {  
         document.getElementById('screen-concierto').style.display = 'none';  
-        document.getElementById('tut2').style.display = 'block'; state = 'TUTORIAL2';  
+        document.getElementById('tut2').style.display = 'block';
+        state = 'TUTORIAL2';  
     }  
 
     window.iniciarJuegoFase2 = function() {  
-        document.getElementById('tut2').style.display = 'none';  
+        document.getElementById('tut2').style.display = 'none';
+        // FIX SUPERPOSICIÓN: asegurarse de que la UI de fase 1 esté oculta
+        ocultarUIFase1();
         document.getElementById('ui-bottom-f2').style.display = 'flex';  
         document.getElementById('meta-container').style.display = 'block';  
         gas = 100; framesF2 = 0; itemsF2 = []; p.x = 80; p.y = canvas.height * 0.7; p.jumps = 0; videoIniciado = false;
-        inicializarObjetosF2(); audio.bg2.play(); state = 'FASE2';  
+        inicializarObjetosF2();
+        audio.bg2.play();
+        state = 'FASE2';  
     }  
 
     function inicializarObjetosF2() {  
@@ -216,6 +240,7 @@
         if (state === 'FASE2') { if (p.jumps < 3) { p.vy = -12; p.jumps++; } }  
     });  
 
+    // FIX LENTITUD: spawn solo ejecuta si el estado es correcto (doble seguro)
     function spawn() {  
         if (state !== 'PLAYING' || bridgeMode) return;  
         const l = Math.floor(Math.random() * 3); const r = Math.random();  
@@ -224,9 +249,7 @@
         else if (r < 0.7) { t = 'pizza'; s = 7.5; w = 90; h = 90; }  
         obs.push({ x: (canvas.width/3)*l + (canvas.width/6)-w/2, y: -150, w, h, type: t, speed: s, vx: 0, isHit: false });  
     }  
-    setInterval(spawn, 900);  
 
-    // Reinicio corregido al terminar el concierto
     fase2Video.onended = () => { restartGame(); };
 
     function draw() {  
@@ -292,9 +315,11 @@
             if(imgs.moteroF2.complete) ctx.drawImage(imgs.moteroF2, p.x, p.y, 105, 165);  
             updateUI();  
             if(prog >= 1 && !videoIniciado) {  
-                videoIniciado = true; canvas.style.display = 'none';
+                videoIniciado = true;
+                canvas.style.display = 'none';
                 document.getElementById('ui-bottom-f2').style.display = 'none';
                 document.getElementById('meta-container').style.display = 'none';
+                audio.bg2.pause();
                 playVideoDirect(fase2Video);
             }  
         }  

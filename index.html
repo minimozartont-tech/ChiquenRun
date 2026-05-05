@@ -5,7 +5,141 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Festival Run - Versión Corregida</title>
     <style>
+        /* TU CSS ORIGINAL TAL CUAL <!DOCTYPE html>
+<html lang="gl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Festival Run - Versión Corregida</title>
+    <style>
         /* TU CSS ORIGINAL TAL CUAL */
+        * { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; overflow: hidden; touch-action: none; font-family: sans-serif; }
+        canvas { display: block; image-rendering: pixelated; position: fixed; top: 0; left: 0; width: 100% !important; height: 100% !important; }
+        #timer-display { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); color: #8e44ad; font-size: 10vw; font-weight: bold; text-shadow: 3px 3px #000; display: none; z-index: 10; white-space: nowrap; }
+        #score-box { position: fixed; bottom: 60px; left: 15px; background: rgba(0,0,0,0.85); border: 2px solid #8e44ad; padding: 6px 12px; border-radius: 10px; color: #fff; min-width: 90px; display: none; z-index: 10; }
+        #score { font-size: 22px; font-weight: bold; }
+        #lives-box { position: fixed; bottom: 60px; right: 15px; background: rgba(0,0,0,0.85); border: 2px solid #8e44ad; padding: 6px; border-radius: 10px; display: none; flex-direction: row; gap: 6px; z-index: 10; }
+        .vida-slot { width: 36px; height: 36px; background: rgba(142,68,173,0.1); border: 1px solid #8e44ad; border-radius: 6px; display: flex; align-items: center; justify-content: center; }
+        .vida-icon { width: 30px; height: auto; }
+        #selection { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: none; flex-direction: column; align-items: center; justify-content: center; color: white; z-index: 20; }
+        .option-container { display: flex; gap: 5vw; }
+        .veh-column { display: flex; flex-direction: column; align-items: center; gap: 15px; cursor: pointer; }
+        .veh-img-box { border: 3px solid #8e44ad; border-radius: 20px; background: #111; width: 28vw; height: 45vw; display: flex; align-items: center; justify-content: center; }
+        .veh-img-box img { width: 80%; }
+        .veh-btn { border: 2px solid #ffff00; padding: 10px 0; border-radius: 10px; font-weight: bold; color: #ffff00; width: 28vw; text-align: center; background: rgba(255,255,0,0.1); font-size: 4vw; }
+    </style>
+</head>
+<body onclick="iniciarTodo()">
+    <div id="pantalla-inicio" style="position:fixed; width:100%; height:100%; background:black; color:#8e44ad; display:flex; align-items:center; justify-content:center; z-index:5000; font-size:8vw;">
+        PULSA PARA XOGAR
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="selection">
+        <h2>Escolle o teu vehículo<br>para chegar ao Sin City</h2>
+        <div class="option-container">
+            <div class="veh-column" onclick="mostrarTutorial1('moto')">
+                <div class="veh-img-box"><img src="motero.png"></div>
+                <div class="veh-btn">MOTO</div>
+            </div>
+            <div class="veh-column" onclick="mostrarTutorial1('coche')">
+                <div class="veh-img-box"><img src="coche.png"></div>
+                <div class="veh-btn">COCHE</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="timer-display">30</div>
+    <div id="score-box"><span>PUNTOS</span><div id="score">0</div></div>
+    <div id="lives-box">
+        <div class="vida-slot" id="slot-1"></div>
+        <div class="vida-slot" id="slot-2"></div>
+        <div class="vida-slot" id="slot-3"></div>
+    </div>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    let GW = window.innerWidth; let GH = window.innerHeight;
+    canvas.width = GW; canvas.height = GH;
+
+    // TU AUDIO
+    const audio = {
+        bg1: new Audio('musica_juego.mp3'),
+        point: new Audio('sonido_pollo.mp3')
+    };
+    audio.bg1.loop = true;
+
+    // TUS IMÁGENES - Con corrección para GitHub
+    const sources = {
+        intro:'intro.png', muralla:'muralla.png', motero:'motero.png', 
+        coche:'coche.png', pollo:'pollo.png', guardia:'guardia.png', vida:'vida.png'
+    };
+    const imgs = {};
+    for (let k in sources) { 
+        imgs[k] = new Image(); 
+        imgs[k].src = sources[k];
+    }
+
+    let state = 'START';
+    let lane = 1, bgY = 0, score = 0, lives = 3, timeLeft = 30;
+    let obstacles = [];
+
+    // Esta función se activa al tocar la pantalla por primera vez
+    window.iniciarTodo = function() {
+        if (state !== 'START') return;
+        document.getElementById('pantalla-inicio').style.display = 'none';
+        document.getElementById('selection').style.display = 'flex';
+        audio.bg1.play();
+        state = 'SELECTING';
+        requestAnimationFrame(draw);
+    }
+
+    window.mostrarTutorial1 = function(type) {
+        selectedVeh = type;
+        document.getElementById('selection').style.display = 'none';
+        document.getElementById('timer-display').style.display = 'block';
+        document.getElementById('score-box').style.display = 'block';
+        document.getElementById('lives-box').style.display = 'flex';
+        state = 'PLAYING';
+    };
+
+    function draw() {
+        ctx.clearRect(0, 0, GW, GH);
+
+        if (state === 'SELECTING') {
+            // Dibujamos la intro solo si ya cargó
+            if (imgs.intro.complete) ctx.drawImage(imgs.intro, 0, 0, GW, GH);
+        }
+
+        if (state === 'PLAYING') {
+            bgY += 5; if(bgY >= GH) bgY = 0;
+            if (imgs.muralla.complete) {
+                ctx.drawImage(imgs.muralla, 0, bgY - GH, GW, GH);
+                ctx.drawImage(imgs.muralla, 0, bgY, GW, GH);
+            }
+
+            const targetX = (GW/3)*lane + (GW/6) - 45;
+            const pImg = selectedVeh === 'moto' ? imgs.motero : imgs.coche;
+            if (pImg.complete) ctx.drawImage(pImg, targetX, GH - 150, 90, 110);
+            
+            // ... resto de tu lógica de obstáculos ...
+        }
+        requestAnimationFrame(draw);
+    }
+
+    window.ontouchstart = (e) => {
+        if (state === 'PLAYING') {
+            if (e.touches[0].clientX < GW/2) { if(lane > 0) lane--; }
+            else { if(lane < 2) lane++; }
+        }
+    };
+</script>
+</body>
+</html>
+*/
         * { box-sizing: border-box; }
         html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; overflow: hidden; touch-action: none; font-family: sans-serif; }
         canvas { display: block; image-rendering: pixelated; position: fixed; top: 0; left: 0; width: 100% !important; height: 100% !important; }

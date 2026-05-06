@@ -2,32 +2,96 @@
 <html lang="gl">  
 <head>  
     <meta charset="UTF-8">  
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">  
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">  
     <title>Festival Run - Edición Concierto</title>  
     <style>  
-        body { margin: 0; background: #000; overflow: hidden; touch-action: none; font-family: 'Arial', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; }  
-        #game-container { position: relative; width: 100vw; height: 100vh; max-width: 500px; aspect-ratio: 480 / 854; background: #000; overflow: hidden; }  
-        canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; }  
+        /* CORRECCIÓN DE ZOOM Y RENDIMIENTO */
+        * { box-sizing: border-box; }
+        body { 
+            margin: 0; 
+            background: #000; 
+            overflow: hidden; 
+            touch-action: none; 
+            font-family: 'Arial', sans-serif; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh;
+            height: 100dvh; /* Altura dinámica para navegadores móviles */
+        }  
+        #game-container { 
+            position: relative; 
+            width: 100vw; 
+            height: 100%; 
+            max-width: 480px; 
+            aspect-ratio: 480 / 854; 
+            background: #000; 
+            overflow: hidden; 
+        }  
+        canvas { 
+            display: block; 
+            width: 100%; 
+            height: 100%; 
+            max-height: 100%;
+            image-rendering: optimizeSpeed; /* Mejora rendimiento en web */
+            -webkit-interpolation-mode: nearest-neighbor;
+        }  
 
-        /* UI BASE (Estilo Morado) */
-        #timer-display { position: absolute; top: 5%; left: 50%; transform: translateX(-50%); color: #8e44ad; font-size: 8vh; font-weight: bold; text-shadow: 3px 3px #000; display: none; z-index: 10; }  
+        /* UI ADAPTATIVA CON PORCENTAJES */
+        #timer-display { 
+            position: absolute; 
+            top: 5%; 
+            left: 50%; 
+            transform: translateX(-50%); 
+            color: #8e44ad; 
+            font-size: 8vh; 
+            font-weight: bold; 
+            text-shadow: 3px 3px #000; 
+            display: none; 
+            z-index: 10; 
+        }  
         
-        .ui-box { position: absolute; bottom: 20px; background: rgba(0,0,0,0.8); border: 2px solid #8e44ad; padding: 10px 15px; border-radius: 10px; color: #fff; display: none; z-index: 10; font-size: 2vh; min-width: 80px; text-align: center; }
-        #score-box { left: 20px; }
-        #gas-box { right: 20px; } /* Nuevo cuadro a la derecha para el gas */
+        .ui-box { 
+            position: absolute; 
+            bottom: 3%; /* Ajuste a porcentaje */
+            background: rgba(0,0,0,0.8); 
+            border: 2px solid #8e44ad; 
+            padding: 8px 12px; 
+            border-radius: 10px; 
+            color: #fff; 
+            display: none; 
+            z-index: 10; 
+            font-size: 1.8vh; 
+            min-width: 70px; 
+            text-align: center; 
+        }
+        #score-box { left: 4%; }
+        #gas-box { right: 4%; } 
         
-        #lives-box { position: absolute; bottom: 20px; right: 20px; background: rgba(0,0,0,0.8); border: 2px solid #8e44ad; padding: 8px; border-radius: 10px; display: none; display: flex; gap: 5px; z-index: 10; }  
-        .vida-icon { width: 3.5vh; height: auto; }
+        #lives-box { 
+            position: absolute; 
+            bottom: 3%; 
+            right: 4%; 
+            background: rgba(0,0,0,0.8); 
+            border: 2px solid #8e44ad; 
+            padding: 5px; 
+            border-radius: 10px; 
+            display: none; 
+            display: flex; 
+            gap: 5px; 
+            z-index: 10; 
+        }  
+        .vida-icon { width: 3vh; height: auto; }
 
-        /* Pantallas y Tutoriales */
+        /* Pantallas */
         #selection { position: absolute; inset: 0; background: rgba(0,0,0,0.95); display: none; flex-direction: column; align-items: center; justify-content: flex-start; color: white; z-index: 100; padding: 40px 20px; text-align: center; }  
         .option-container { display: flex; flex-direction: row; gap: 15px; justify-content: center; width: 100%; margin-top: auto; margin-bottom: 40px; }
         .veh-btn { border: 3px solid #ffff00; padding: 15px 5px; border-radius: 20px; background: rgba(255,255,0,0.1); color: #ffff00; font-weight: bold; flex: 1; text-align: center; }
         .veh-btn img { height: 14vh; margin-top: 10px; object-fit: contain; }
 
-        #screen-concierto { position: absolute; inset: 0; background: #000; display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 110; text-align: center; }
         .tutorial-overlay { position: absolute; inset: 0; background-size: contain; background-position: center; background-repeat: no-repeat; background-color: #000; z-index: 150; display: none; }  
         .video-overlay { position: fixed; inset: 0; width: 100%; height: 100%; background: #000; display: none; z-index: 1000; object-fit: contain; }
+        #screen-concierto { position: absolute; inset: 0; background: #000; display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 110; text-align: center; }
     </style>
 </head>  
 <body>  
@@ -88,6 +152,7 @@
     const player = { x: GW/2, y: GH-200, w: 120, h: 160, vy: 0, saltos: 0 };
 
     function fadeOutAudio(audioElement, duration = 2000) {
+        if (!audioElement) return;
         const startVolume = audioElement.volume;
         const steps = 20;
         const interval = duration / steps;
@@ -118,7 +183,7 @@
         document.getElementById('timer-display').style.display = 'block';
         document.getElementById('score-box').style.display = 'block';
         document.getElementById('lives-box').style.display = 'flex';
-        document.getElementById('gas-box').style.display = 'none'; // No hay gas en fase 1
+        document.getElementById('gas-box').style.display = 'none'; 
         tiempo = 50; audio.bg1.volume = 1;
         audio.bg1.loop = true; audio.bg1.play();
         actualizarVidasUI();
@@ -131,11 +196,9 @@
         const vid = document.getElementById('video-fase1');
         vid.src = (vehiculo === 'motero') ? 'moto_final.mp4' : 'coche_final.mp4';
         vid.style.display = 'block'; vid.play();
-        
         vid.ontimeupdate = () => {
             if (vid.duration - vid.currentTime < 2.5) { fadeOutAudio(audio.bg1, 2000); vid.ontimeupdate = null; }
         };
-
         vid.onended = () => {
             vid.style.display = 'none';
             document.getElementById('screen-concierto').style.display = 'flex';
@@ -151,9 +214,8 @@
         document.getElementById('tut2').style.display = 'none';
         document.getElementById('timer-display').style.display = 'block';
         document.getElementById('score-box').style.display = 'block';
-        document.getElementById('gas-box').style.display = 'block'; // Mostrar gas
-        document.getElementById('lives-box').style.display = 'none'; // QUITAR VIDAS EN FASE 2
-        
+        document.getElementById('gas-box').style.display = 'block'; 
+        document.getElementById('lives-box').style.display = 'none'; 
         gas = 100; framesF2 = 0; itemsF2 = []; tiempo = 50;
         player.x = 80; player.y = GH * 0.7;
         generarItemsF2();
@@ -268,3 +330,4 @@
 </script>  
 </body>  
 </html>
+

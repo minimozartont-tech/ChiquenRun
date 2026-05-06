@@ -9,17 +9,15 @@
         #game-container { position: relative; width: 100vw; height: 100vh; max-width: 500px; aspect-ratio: 480 / 854; background: #000; overflow: hidden; }  
         canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; }  
 
-        /* UI BASE (Estilo Morado) */
         #timer-display { position: absolute; top: 5%; left: 50%; transform: translateX(-50%); color: #8e44ad; font-size: 8vh; font-weight: bold; text-shadow: 3px 3px #000; display: none; z-index: 10; }  
         
         .ui-box { position: absolute; bottom: 20px; background: rgba(0,0,0,0.8); border: 2px solid #8e44ad; padding: 10px 15px; border-radius: 10px; color: #fff; display: none; z-index: 10; font-size: 2vh; min-width: 80px; text-align: center; }
         #score-box { left: 20px; }
-        #gas-box { right: 20px; } /* Nuevo cuadro a la derecha para el gas */
+        #gas-box { right: 20px; }
         
         #lives-box { position: absolute; bottom: 20px; right: 20px; background: rgba(0,0,0,0.8); border: 2px solid #8e44ad; padding: 8px; border-radius: 10px; display: none; display: flex; gap: 5px; z-index: 10; }  
         .vida-icon { width: 3.5vh; height: auto; }
 
-        /* Pantallas y Tutoriales */
         #selection { position: absolute; inset: 0; background: rgba(0,0,0,0.95); display: none; flex-direction: column; align-items: center; justify-content: flex-start; color: white; z-index: 100; padding: 40px 20px; text-align: center; }  
         .option-container { display: flex; flex-direction: row; gap: 15px; justify-content: center; width: 100%; margin-top: auto; margin-bottom: 40px; }
         .veh-btn { border: 3px solid #ffff00; padding: 15px 5px; border-radius: 20px; background: rgba(255,255,0,0.1); color: #ffff00; font-weight: bold; flex: 1; text-align: center; }
@@ -118,7 +116,7 @@
         document.getElementById('timer-display').style.display = 'block';
         document.getElementById('score-box').style.display = 'block';
         document.getElementById('lives-box').style.display = 'flex';
-        document.getElementById('gas-box').style.display = 'none'; // No hay gas en fase 1
+        document.getElementById('gas-box').style.display = 'none';
         tiempo = 50; audio.bg1.volume = 1;
         audio.bg1.loop = true; audio.bg1.play();
         actualizarVidasUI();
@@ -151,8 +149,8 @@
         document.getElementById('tut2').style.display = 'none';
         document.getElementById('timer-display').style.display = 'block';
         document.getElementById('score-box').style.display = 'block';
-        document.getElementById('gas-box').style.display = 'block'; // Mostrar gas
-        document.getElementById('lives-box').style.display = 'none'; // QUITAR VIDAS EN FASE 2
+        document.getElementById('gas-box').style.display = 'block';
+        document.getElementById('lives-box').style.display = 'none';
         
         gas = 100; framesF2 = 0; itemsF2 = []; tiempo = 50;
         player.x = 80; player.y = GH * 0.7;
@@ -183,7 +181,7 @@
         if (estado === 'INICIO') { if(imgs.intro.complete) ctx.drawImage(imgs.intro, 0, 0, GW, GH); }
 
         if (estado === 'JUGANDO_F1') {
-            scrollY = (scrollY + 9) % GH;
+            scrollY = (scrollY + 14) % GH; // VELOCIDAD FASE 1: era 9, ahora 14
             const bg = modoPuente ? imgs.puente : imgs.muralla;
             ctx.drawImage(bg, 0, scrollY - GH, GW, GH); ctx.drawImage(bg, 0, scrollY, GW, GH);
             let destinoX = (GW/3)*carril + (GW/6) - player.w/2;
@@ -192,7 +190,7 @@
             ctx.drawImage(imgs[vehiculo], player.x, player.y, player.w, player.h); ctx.globalAlpha = 1.0;
 
             for (let i = obstaculos.length - 1; i >= 0; i--) {
-                let o = obstaculos[i]; o.y += 8;
+                let o = obstaculos[i]; o.y += 13; // VELOCIDAD OBSTÁCULOS F1: era 8, ahora 13
                 let tam = (o.tipo === 'guardia') ? 150 : 110;
                 ctx.drawImage(imgs[o.tipo], o.x, o.y, tam, tam);
                 if (player.x < o.x+tam-30 && player.x+player.w > o.x+30 && player.y < o.y+tam-30 && player.y+player.h > o.y+30) {
@@ -218,7 +216,8 @@
 
             itemsF2.forEach(it => {
                 if(!it.rec && framesF2 >= it.fTarget - 180) {
-                    it.x -= (GW / 160); let yPos = (margS + altJ) - it.h - it.yB;
+                    it.x -= (GW / 90); // VELOCIDAD ITEMS F2: era 160, ahora 90
+                    let yPos = (margS + altJ) - it.h - it.yB;
                     ctx.drawImage(it.img, it.x, yPos, it.w, it.h);
                     if(player.x < it.x+it.w-20 && player.x+100 > it.x+20 && player.y < yPos+it.h-20 && player.y+160 > yPos+20) {
                         it.rec = true;

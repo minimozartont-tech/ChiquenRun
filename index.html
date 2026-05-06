@@ -9,13 +9,17 @@
         #game-container { position: relative; width: 100vw; height: 100vh; max-width: 500px; aspect-ratio: 480 / 854; background: #000; overflow: hidden; }  
         canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; }  
 
-        /* UI ÚNICA (Morada) */
+        /* UI BASE (Estilo Morado) */
         #timer-display { position: absolute; top: 5%; left: 50%; transform: translateX(-50%); color: #8e44ad; font-size: 8vh; font-weight: bold; text-shadow: 3px 3px #000; display: none; z-index: 10; }  
-        #score-box { position: absolute; bottom: 20px; left: 20px; background: rgba(0,0,0,0.8); border: 2px solid #8e44ad; padding: 10px 15px; border-radius: 10px; color: #fff; display: none; z-index: 10; font-size: 2vh; }  
+        
+        .ui-box { position: absolute; bottom: 20px; background: rgba(0,0,0,0.8); border: 2px solid #8e44ad; padding: 10px 15px; border-radius: 10px; color: #fff; display: none; z-index: 10; font-size: 2vh; min-width: 80px; text-align: center; }
+        #score-box { left: 20px; }
+        #gas-box { right: 20px; } /* Nuevo cuadro a la derecha para el gas */
+        
         #lives-box { position: absolute; bottom: 20px; right: 20px; background: rgba(0,0,0,0.8); border: 2px solid #8e44ad; padding: 8px; border-radius: 10px; display: none; display: flex; gap: 5px; z-index: 10; }  
         .vida-icon { width: 3.5vh; height: auto; }
 
-        /* Pantallas */
+        /* Pantallas y Tutoriales */
         #selection { position: absolute; inset: 0; background: rgba(0,0,0,0.95); display: none; flex-direction: column; align-items: center; justify-content: flex-start; color: white; z-index: 100; padding: 40px 20px; text-align: center; }  
         .option-container { display: flex; flex-direction: row; gap: 15px; justify-content: center; width: 100%; margin-top: auto; margin-bottom: 40px; }
         .veh-btn { border: 3px solid #ffff00; padding: 15px 5px; border-radius: 20px; background: rgba(255,255,0,0.1); color: #ffff00; font-weight: bold; flex: 1; text-align: center; }
@@ -46,7 +50,8 @@
         </div>  
         
         <div id="timer-display">50</div>  
-        <div id="score-box">PUNTOS: <span id="score">0</span> <span id="gas-label" style="display:none">| GAS: <span id="gas-value">100</span>%</span></div>  
+        <div id="score-box" class="ui-box">PUNTOS: <span id="score">0</span></div>  
+        <div id="gas-box" class="ui-box">GAS: <span id="gas-value">100</span>%</div>
         <div id="lives-box"></div>  
 
         <canvas id="gameCanvas"></canvas>  
@@ -87,15 +92,9 @@
         const steps = 20;
         const interval = duration / steps;
         const stepValue = startVolume / steps;
-
         const fade = setInterval(() => {
-            if (audioElement.volume > stepValue) {
-                audioElement.volume -= stepValue;
-            } else {
-                audioElement.volume = 0;
-                audioElement.pause();
-                clearInterval(fade);
-            }
+            if (audioElement.volume > stepValue) { audioElement.volume -= stepValue; } 
+            else { audioElement.volume = 0; audioElement.pause(); clearInterval(fade); }
         }, interval);
     }
 
@@ -119,6 +118,7 @@
         document.getElementById('timer-display').style.display = 'block';
         document.getElementById('score-box').style.display = 'block';
         document.getElementById('lives-box').style.display = 'flex';
+        document.getElementById('gas-box').style.display = 'none'; // No hay gas en fase 1
         tiempo = 50; audio.bg1.volume = 1;
         audio.bg1.loop = true; audio.bg1.play();
         actualizarVidasUI();
@@ -132,12 +132,8 @@
         vid.src = (vehiculo === 'motero') ? 'moto_final.mp4' : 'coche_final.mp4';
         vid.style.display = 'block'; vid.play();
         
-        // Empezar desvanecimiento 2 segundos antes de que acabe el vídeo
         vid.ontimeupdate = () => {
-            if (vid.duration - vid.currentTime < 2.5) {
-                fadeOutAudio(audio.bg1, 2000);
-                vid.ontimeupdate = null; 
-            }
+            if (vid.duration - vid.currentTime < 2.5) { fadeOutAudio(audio.bg1, 2000); vid.ontimeupdate = null; }
         };
 
         vid.onended = () => {
@@ -154,7 +150,10 @@
     window.iniciarJuegoFase2 = function() {
         document.getElementById('tut2').style.display = 'none';
         document.getElementById('timer-display').style.display = 'block';
-        document.getElementById('gas-label').style.display = 'inline';
+        document.getElementById('score-box').style.display = 'block';
+        document.getElementById('gas-box').style.display = 'block'; // Mostrar gas
+        document.getElementById('lives-box').style.display = 'none'; // QUITAR VIDAS EN FASE 2
+        
         gas = 100; framesF2 = 0; itemsF2 = []; tiempo = 50;
         player.x = 80; player.y = GH * 0.7;
         generarItemsF2();
@@ -169,80 +168,57 @@
             let tipo, img, fTarget = (i + 1) * intervalo;
             let r = Math.random();
             let w = 80, h = 80;
-            
             if (i === 45) { tipo='comida'; img=imgs.comida; }
             else if (i === total-2) { tipo='veneno'; img=imgs.veneno; }
             else if (r < 0.25) { tipo='pollo'; img=imgs.pollo; }
             else if (r < 0.50) { tipo='bueno'; img=imgs.bueno; w=140; h=70; }
             else if (r < 0.75) { tipo='malo'; img=imgs.malo1; }
             else { tipo='malo'; img=imgs.malo2; w=60; h=60; }
-            
             itemsF2.push({ fTarget, x: GW + 200, yB: [20, 165, 315][Math.floor(Math.random()*3)], tipo, img, w, h, rec: false });
         }
     }
 
     function loop() {
         ctx.clearRect(0, 0, GW, GH);
-
-        if (estado === 'INICIO') {
-            if(imgs.intro.complete) ctx.drawImage(imgs.intro, 0, 0, GW, GH);
-        }
+        if (estado === 'INICIO') { if(imgs.intro.complete) ctx.drawImage(imgs.intro, 0, 0, GW, GH); }
 
         if (estado === 'JUGANDO_F1') {
             scrollY = (scrollY + 9) % GH;
             const bg = modoPuente ? imgs.puente : imgs.muralla;
-            ctx.drawImage(bg, 0, scrollY - GH, GW, GH);
-            ctx.drawImage(bg, 0, scrollY, GW, GH);
-
+            ctx.drawImage(bg, 0, scrollY - GH, GW, GH); ctx.drawImage(bg, 0, scrollY, GW, GH);
             let destinoX = (GW/3)*carril + (GW/6) - player.w/2;
             player.x += (destinoX - player.x) * 0.25;
-
-            if (frameParpadeo > 0) {
-                frameParpadeo--;
-                if (Math.floor(frameParpadeo / 5) % 2 === 0) ctx.globalAlpha = 0.3;
-            }
-            ctx.drawImage(imgs[vehiculo], player.x, player.y, player.w, player.h);
-            ctx.globalAlpha = 1.0;
+            if (frameParpadeo > 0) { frameParpadeo--; if (Math.floor(frameParpadeo / 5) % 2 === 0) ctx.globalAlpha = 0.3; }
+            ctx.drawImage(imgs[vehiculo], player.x, player.y, player.w, player.h); ctx.globalAlpha = 1.0;
 
             for (let i = obstaculos.length - 1; i >= 0; i--) {
                 let o = obstaculos[i]; o.y += 8;
                 let tam = (o.tipo === 'guardia') ? 150 : 110;
                 ctx.drawImage(imgs[o.tipo], o.x, o.y, tam, tam);
                 if (player.x < o.x+tam-30 && player.x+player.w > o.x+30 && player.y < o.y+tam-30 && player.y+player.h > o.y+30) {
-                    if(o.tipo === 'pollo') { 
-                        score += 100; audio.point.play(); document.getElementById('score').innerText = score;
-                    } else {
-                        vidas--; audio.crash.currentTime = 0; audio.crash.play(); 
-                        frameParpadeo = 40; actualizarVidasUI(); if(vidas <= 0) location.reload();
-                    }
+                    if(o.tipo === 'pollo') { score += 100; audio.point.play(); document.getElementById('score').innerText = score; } 
+                    else { vidas--; audio.crash.currentTime = 0; audio.crash.play(); frameParpadeo = 40; actualizarVidasUI(); if(vidas <= 0) location.reload(); }
                     obstaculos.splice(i, 1);
                 }
             }
-            tiempo -= 1/60;
-            document.getElementById('timer-display').innerText = Math.ceil(Math.max(0, tiempo));
+            tiempo -= 1/60; document.getElementById('timer-display').innerText = Math.ceil(Math.max(0, tiempo));
             if(tiempo <= 5) modoPuente = true;
             if(tiempo <= 0) finalizarFase1();
         }
 
         if (estado === 'JUGANDO_F2') {
-            let prog = framesF2 / 6000;
-            if (prog < 1) framesF2++;
-            
-            tiempo = 50 - (prog * 50);
-            document.getElementById('timer-display').innerText = Math.ceil(Math.max(0, tiempo));
-
+            let prog = framesF2 / 6000; if (prog < 1) framesF2++;
+            tiempo = 50 - (prog * 50); document.getElementById('timer-display').innerText = Math.ceil(Math.max(0, tiempo));
             const altJ = GH * 0.45; const margS = (GH - altJ) / 2;
             if(imgs.fondoF2.complete) {
                 let ratio = imgs.fondoF2.width / imgs.fondoF2.height;
-                let aF = altJ * ratio;
-                ctx.drawImage(imgs.fondoF2, -(prog * (aF - GW)), margS, aF, altJ);
+                let aF = altJ * ratio; ctx.drawImage(imgs.fondoF2, -(prog * (aF - GW)), margS, aF, altJ);
             }
             ctx.fillStyle = "black"; ctx.fillRect(0, 0, GW, margS); ctx.fillRect(0, margS + altJ, GW, GH);
 
             itemsF2.forEach(it => {
                 if(!it.rec && framesF2 >= it.fTarget - 180) {
-                    it.x -= (GW / 160);
-                    let yPos = (margS + altJ) - it.h - it.yB;
+                    it.x -= (GW / 160); let yPos = (margS + altJ) - it.h - it.yB;
                     ctx.drawImage(it.img, it.x, yPos, it.w, it.h);
                     if(player.x < it.x+it.w-20 && player.x+100 > it.x+20 && player.y < yPos+it.h-20 && player.y+160 > yPos+20) {
                         it.rec = true;
@@ -255,28 +231,18 @@
                 }
             });
 
-            let sueloY = (margS + altJ) - 160;
-            player.vy += 0.6; player.y += player.vy;
+            let sueloY = (margS + altJ) - 160; player.vy += 0.6; player.y += player.vy;
             if(player.y > sueloY){ player.y = sueloY; player.vy = 0; player.saltos = 0; }
             ctx.drawImage(imgs.moteroF2, player.x, player.y, 100, 160);
 
             if(gas <= 0) location.reload();
-            
             if(prog >= 1) {
-                estado = 'VIDEO2';
-                canvas.style.display = 'none';
+                estado = 'VIDEO2'; canvas.style.display = 'none';
                 document.getElementById('timer-display').style.display = 'none';
                 document.getElementById('score-box').style.display = 'none';
-                const v2 = document.getElementById('video-fase2');
-                v2.style.display = 'block'; v2.play();
-
-                v2.ontimeupdate = () => {
-                    if (v2.duration - v2.currentTime < 2.5) {
-                        fadeOutAudio(audio.bg2, 2000);
-                        v2.ontimeupdate = null;
-                    }
-                };
-
+                document.getElementById('gas-box').style.display = 'none';
+                const v2 = document.getElementById('video-fase2'); v2.style.display = 'block'; v2.play();
+                v2.ontimeupdate = () => { if (v2.duration - v2.currentTime < 2.5) { fadeOutAudio(audio.bg2, 2000); v2.ontimeupdate = null; } };
                 v2.onended = () => location.reload();
             }
         }
@@ -286,24 +252,18 @@
     window.addEventListener('touchstart', (e) => {
         if (estado === 'INICIO') { document.getElementById('selection').style.display = 'flex'; estado = 'SELECCION'; }
         else if (estado === 'JUGANDO_F1' && !modoPuente) {
-            if(e.touches[0].clientX < window.innerWidth/2) { if(carril > 0) carril--; }
-            else { if(carril < 2) carril++; }
-        }
-        else if (estado === 'JUGANDO_F2') {
-            if (player.saltos < 2) { player.vy = -14; player.saltos++; }
-        }
+            if(e.touches[0].clientX < window.innerWidth/2) { if(carril > 0) carril--; } else { if(carril < 2) carril++; }
+        } else if (estado === 'JUGANDO_F2') { if (player.saltos < 2) { player.vy = -14; player.saltos++; } }
     });
 
     setInterval(() => { 
         if(estado === 'JUGANDO_F1' && !modoPuente) {
-            const r = Math.random();
-            let t = 'guardia';
+            const r = Math.random(); let t = 'guardia';
             if (r < 0.15) t = 'pollo'; else if (r < 0.30) t = 'pizza';
             let tSize = (t === 'guardia') ? 150 : 110;
             obstaculos.push({ x: (GW/3)*Math.floor(Math.random()*3) + (GW/6)-tSize/2, y: -150, tipo: t }); 
         } 
     }, 900);
-
     loop();
 </script>  
 </body>  

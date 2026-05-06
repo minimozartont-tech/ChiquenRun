@@ -82,6 +82,23 @@
     
     const player = { x: GW/2, y: GH-200, w: 120, h: 160, vy: 0, saltos: 0 };
 
+    function fadeOutAudio(audioElement, duration = 2000) {
+        const startVolume = audioElement.volume;
+        const steps = 20;
+        const interval = duration / steps;
+        const stepValue = startVolume / steps;
+
+        const fade = setInterval(() => {
+            if (audioElement.volume > stepValue) {
+                audioElement.volume -= stepValue;
+            } else {
+                audioElement.volume = 0;
+                audioElement.pause();
+                clearInterval(fade);
+            }
+        }, interval);
+    }
+
     function actualizarVidasUI() {
         const box = document.getElementById('lives-box');
         box.innerHTML = '';
@@ -102,18 +119,27 @@
         document.getElementById('timer-display').style.display = 'block';
         document.getElementById('score-box').style.display = 'block';
         document.getElementById('lives-box').style.display = 'flex';
-        tiempo = 50;
+        tiempo = 50; audio.bg1.volume = 1;
         audio.bg1.loop = true; audio.bg1.play();
         actualizarVidasUI();
         estado = 'JUGANDO_F1';
     }
 
     function finalizarFase1() {
-        estado = 'VIDEO1'; audio.bg1.pause();
+        estado = 'VIDEO1';
         document.getElementById('timer-display').style.display = 'none';
         const vid = document.getElementById('video-fase1');
         vid.src = (vehiculo === 'motero') ? 'moto_final.mp4' : 'coche_final.mp4';
         vid.style.display = 'block'; vid.play();
+        
+        // Empezar desvanecimiento 2 segundos antes de que acabe el vídeo
+        vid.ontimeupdate = () => {
+            if (vid.duration - vid.currentTime < 2.5) {
+                fadeOutAudio(audio.bg1, 2000);
+                vid.ontimeupdate = null; 
+            }
+        };
+
         vid.onended = () => {
             vid.style.display = 'none';
             document.getElementById('screen-concierto').style.display = 'flex';
@@ -132,7 +158,7 @@
         gas = 100; framesF2 = 0; itemsF2 = []; tiempo = 50;
         player.x = 80; player.y = GH * 0.7;
         generarItemsF2();
-        audio.bg2.loop = true; audio.bg2.play();
+        audio.bg2.volume = 1; audio.bg2.loop = true; audio.bg2.play();
         estado = 'JUGANDO_F2';
     }
 
@@ -147,7 +173,7 @@
             if (i === 45) { tipo='comida'; img=imgs.comida; }
             else if (i === total-2) { tipo='veneno'; img=imgs.veneno; }
             else if (r < 0.25) { tipo='pollo'; img=imgs.pollo; }
-            else if (r < 0.50) { tipo='bueno'; img=imgs.bueno; w=140; h=70; } // CAMBIO: ANCHO Y BAJO
+            else if (r < 0.50) { tipo='bueno'; img=imgs.bueno; w=140; h=70; }
             else if (r < 0.75) { tipo='malo'; img=imgs.malo1; }
             else { tipo='malo'; img=imgs.malo2; w=60; h=60; }
             
@@ -180,7 +206,7 @@
 
             for (let i = obstaculos.length - 1; i >= 0; i--) {
                 let o = obstaculos[i]; o.y += 8;
-                let tam = (o.tipo === 'guardia') ? 150 : 110; // CAMBIO: GUARDIA GRANDE
+                let tam = (o.tipo === 'guardia') ? 150 : 110;
                 ctx.drawImage(imgs[o.tipo], o.x, o.y, tam, tam);
                 if (player.x < o.x+tam-30 && player.x+player.w > o.x+30 && player.y < o.y+tam-30 && player.y+player.h > o.y+30) {
                     if(o.tipo === 'pollo') { 
@@ -202,7 +228,6 @@
             let prog = framesF2 / 6000;
             if (prog < 1) framesF2++;
             
-            // RELOJ FASE 2: 50 a 0
             tiempo = 50 - (prog * 50);
             document.getElementById('timer-display').innerText = Math.ceil(Math.max(0, tiempo));
 
@@ -238,12 +263,20 @@
             if(gas <= 0) location.reload();
             
             if(prog >= 1) {
-                estado = 'VIDEO2'; audio.bg2.pause();
+                estado = 'VIDEO2';
                 canvas.style.display = 'none';
                 document.getElementById('timer-display').style.display = 'none';
                 document.getElementById('score-box').style.display = 'none';
                 const v2 = document.getElementById('video-fase2');
                 v2.style.display = 'block'; v2.play();
+
+                v2.ontimeupdate = () => {
+                    if (v2.duration - v2.currentTime < 2.5) {
+                        fadeOutAudio(audio.bg2, 2000);
+                        v2.ontimeupdate = null;
+                    }
+                };
+
                 v2.onended = () => location.reload();
             }
         }

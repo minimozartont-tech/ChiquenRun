@@ -3,7 +3,7 @@
 <head>  
     <meta charset="UTF-8">  
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">  
-    <title>Festival Run - Pulido Final</title>  
+    <title>Festival Run - Choque Pro</title>  
     <style>  
         body { margin: 0; background: #000; overflow: hidden; touch-action: none; font-family: 'Arial', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; }  
         #game-container { position: relative; width: 100vw; height: 100vh; max-width: 500px; aspect-ratio: 480 / 854; background: #000; overflow: hidden; }  
@@ -15,11 +15,10 @@
         #lives-box { position: absolute; bottom: 20px; right: 20px; background: rgba(0,0,0,0.8); border: 2px solid #8e44ad; padding: 8px; border-radius: 10px; display: none; display: flex; gap: 5px; z-index: 10; }  
         .vida-icon { width: 3.5vh; height: auto; }
 
-        /* Pantalla de Selección con Texto Nuevo */
+        /* Pantalla de Selección */
         #selection { position: absolute; inset: 0; background: rgba(0,0,0,0.95); display: none; flex-direction: column; align-items: center; justify-content: center; color: white; z-index: 100; padding: 20px; text-align: center; }  
         .sel-text { color: #8e44ad; font-weight: bold; text-shadow: 2px 2px #000; margin-bottom: 10px; line-height: 1.2; }
         .sub-text { color: #ffff00; font-size: 2.2vh; margin-bottom: 30px; font-style: italic; }
-        
         .option-container { display: flex; flex-direction: row; gap: 15px; justify-content: center; width: 100%; }
         .veh-btn { border: 3px solid #ffff00; padding: 15px 5px; border-radius: 20px; background: rgba(255,255,0,0.1); color: #ffff00; font-weight: bold; cursor: pointer; flex: 1; text-align: center; }
         .veh-btn img { height: 12vh; margin-top: 10px; object-fit: contain; }
@@ -72,9 +71,11 @@
         crash: new Audio('choque.mp3'),
         point: new Audio('sonido_pollo.mp3')
     };
+    audio.crash.volume = 1.0; // Volumen al máximo
 
     let estado = 'INICIO', vehiculo = 'motero', score = 0, vidas = 3, tiempo = 100;
     let scrollY = 0, carril = 1, obstaculos = [], modoPuente = false;
+    let frameParpadeo = 0; // Para el efecto visual
     const player = { x: GW/2, y: GH-180, w: 95, h: 125 };
 
     function mostrarTut(v) {
@@ -133,12 +134,20 @@
             ctx.drawImage(bg, 0, scrollY - GH, GW, GH);
             ctx.drawImage(bg, 0, scrollY, GW, GH);
 
-            // Bloqueo en el puente: Si estamos en modoPuente, el carril siempre es el 1 (centro)
             if(modoPuente) carril = 1;
 
             let destinoX = (GW/3)*carril + (GW/6) - player.w/2;
             player.x += (destinoX - player.x) * 0.25;
+
+            // --- EFECTO DE PARPADEO ---
+            if (frameParpadeo > 0) {
+                frameParpadeo--;
+                if (Math.floor(frameParpadeo / 5) % 2 === 0) {
+                    ctx.globalAlpha = 0.3; // Hace el vehículo casi invisible
+                }
+            }
             ctx.drawImage(imgs[vehiculo], player.x, player.y, player.w, player.h);
+            ctx.globalAlpha = 1.0; // Resetear transparencia
 
             for (let i = obstaculos.length - 1; i >= 0; i--) {
                 let o = obstaculos[i];
@@ -147,10 +156,15 @@
 
                 if (player.x < o.x+o.w-20 && player.x+player.w > o.x+20 && player.y < o.y+o.h-20 && player.y+player.h > o.y+20) {
                     if(o.tipo === 'pollo') {
-                        score += 100; audio.point.play();
+                        score += 100; 
+                        audio.point.currentTime = 0; // Reinicia sonido para que suene siempre
+                        audio.point.play();
                         document.getElementById('score').innerText = score;
                     } else {
-                        vidas--; audio.crash.play();
+                        vidas--; 
+                        audio.crash.currentTime = 0; // Reinicia sonido choque
+                        audio.crash.play();
+                        frameParpadeo = 40; // Activa el parpadeo durante 40 frames
                         actualizarVidasUI();
                         if(vidas <= 0) {
                             estado = 'GAMEOVER';
@@ -165,8 +179,6 @@
 
             tiempo -= 1/60;
             document.getElementById('timer-display').innerText = Math.ceil(Math.max(0, tiempo));
-            
-            // Activar modo puente
             if(tiempo <= 5) modoPuente = true;
             if(tiempo <= 0) finalizarFase();
         }
@@ -178,7 +190,7 @@
         if (estado === 'INICIO') {
             document.getElementById('selection').style.display = 'flex';
             estado = 'SELECCION';
-        } else if (estado === 'JUGANDO' && !modoPuente) { // Desactivar control táctil en el puente
+        } else if (estado === 'JUGANDO' && !modoPuente) {
             if(e.touches[0].clientX < window.innerWidth/2) {
                 if(carril > 0) carril--;
             } else {

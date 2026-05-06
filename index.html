@@ -115,6 +115,11 @@
 
     function finalizarFase1() {
         estado = 'VIDEO1'; audio.bg1.pause();
+        // OCULTAR UI FASE 1 PARA QUE NO SE VEA EN LA FASE 2
+        document.getElementById('timer-display').style.display = 'none';
+        document.getElementById('score-box').style.display = 'none';
+        document.getElementById('lives-box').style.display = 'none';
+
         const vid = document.getElementById('video-fase1');
         vid.src = (vehiculo === 'motero') ? 'moto_final.mp4' : 'coche_final.mp4';
         vid.style.display = 'block'; vid.play();

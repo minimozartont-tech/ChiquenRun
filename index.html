@@ -3,28 +3,27 @@
 <head>  
     <meta charset="UTF-8">  
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">  
-    <title>Festival Run - Final Polish</title>  
+    <title>Festival Run - Edición Concierto</title>  
     <style>  
         body { margin: 0; background: #000; overflow: hidden; touch-action: none; font-family: 'Arial', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; }  
         #game-container { position: relative; width: 100vw; height: 100vh; max-width: 500px; aspect-ratio: 480 / 854; background: #000; overflow: hidden; }  
         canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; }  
 
-        /* UI Fase 1 */
+        /* UI */
         #timer-display { position: absolute; top: 5%; left: 50%; transform: translateX(-50%); color: #8e44ad; font-size: 8vh; font-weight: bold; text-shadow: 3px 3px #000; display: none; z-index: 10; }  
         #score-box { position: absolute; bottom: 20px; left: 20px; background: rgba(0,0,0,0.8); border: 2px solid #8e44ad; padding: 10px 15px; border-radius: 10px; color: #fff; display: none; z-index: 10; font-size: 2vh; }  
         #lives-box { position: absolute; bottom: 20px; right: 20px; background: rgba(0,0,0,0.8); border: 2px solid #8e44ad; padding: 8px; border-radius: 10px; display: none; display: flex; gap: 5px; z-index: 10; }  
         .vida-icon { width: 3.5vh; height: auto; }
-
-        /* UI Fase 2 */
-        #ui-f2 { position: absolute; bottom: 5%; width: 100%; display: none; justify-content: space-around; color: #ffff00; font-size: 2.2vh; z-index: 100; text-shadow: 2px 2px #000; }
+        #ui-f2 { position: absolute; bottom: 5%; width: 100%; display: none; justify-content: space-around; color: #ffff00; font-size: 2.2vh; z-index: 10; text-shadow: 2px 2px #000; }
 
         /* Pantallas */
-        #selection { position: absolute; inset: 0; background: rgba(0,0,0,0.95); display: none; flex-direction: column; align-items: center; justify-content: flex-start; color: white; z-index: 200; padding: 40px 20px; text-align: center; }  
+        #selection { position: absolute; inset: 0; background: rgba(0,0,0,0.95); display: none; flex-direction: column; align-items: center; justify-content: flex-start; color: white; z-index: 100; padding: 40px 20px; text-align: center; }  
+        .option-container { display: flex; flex-direction: row; gap: 15px; justify-content: center; width: 100%; margin-top: auto; margin-bottom: 40px; }
         .veh-btn { border: 3px solid #ffff00; padding: 15px 5px; border-radius: 20px; background: rgba(255,255,0,0.1); color: #ffff00; font-weight: bold; flex: 1; text-align: center; }
         .veh-btn img { height: 14vh; margin-top: 10px; object-fit: contain; }
 
-        #screen-concierto { position: absolute; inset: 0; background: #000; display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 300; text-align: center; }
-        .tutorial-overlay { position: absolute; inset: 0; background-size: contain; background-position: center; background-repeat: no-repeat; background-color: #000; z-index: 400; display: none; }  
+        #screen-concierto { position: absolute; inset: 0; background: #000; display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 110; text-align: center; }
+        .tutorial-overlay { position: absolute; inset: 0; background-size: contain; background-position: center; background-repeat: no-repeat; background-color: #000; z-index: 150; display: none; }  
         .video-overlay { position: fixed; inset: 0; width: 100%; height: 100%; background: #000; display: none; z-index: 1000; object-fit: contain; }
     </style>
 </head>  
@@ -36,18 +35,19 @@
 
         <div id="screen-concierto" onclick="mostrarTutorial2()">  
             <h1 style="color: #00ff00; font-size: 4vh;">🎸 TOCA AQUÍ 🎸</h1>  
-            <p style="color:white">PARA CHEGAR AO CONCERTO</p>  
+            <p style="color:white">PARA ENTRAR NO CONCERTO</p>  
         </div>
 
         <div id="selection">  
             <div style="color: #8e44ad; font-weight: bold; font-size: 3.5vh; margin-top: 20px;">ESCOLLE O TEU VEHÍCULO<br>PARA CHEGAR AO SIN CITY...</div>
-            <div class="option-container" style="display: flex; gap: 15px; margin-top: auto; margin-bottom: 40px;">
+            <div style="color: #ffff00; font-size: 2.2vh; font-style: italic;">E colle todos os "pollos" que poidas!!!</div>
+            <div class="option-container">
                 <div onclick="mostrarTut1('moto')" class="veh-btn">MOTO<br><img src="motero.png"></div>  
                 <div onclick="mostrarTut1('coche')" class="veh-btn">COCHE<br><img src="coche.png"></div>  
             </div>
         </div>  
         
-        <div id="timer-display">50</div>  
+        <div id="timer-display">100</div>  
         <div id="score-box">PUNTOS: <span id="score">0</span></div>  
         <div id="lives-box"></div>  
         <div id="ui-f2"><div>PUNTOS: <span id="scoreF2">0</span></div><div>GAS: <span id="gasF2">100</span>%</div></div>
@@ -78,12 +78,15 @@
         crash: new Audio('choque.mp3'), point: new Audio('sonido_pollo.mp3'),
         bueno: new Audio('sonido_bueno.mp3'), malo: new Audio('sonido_malo.wav')
     };
+    audio.crash.volume = 1.0;
 
-    let estado = 'INICIO', vehiculo = 'motero', score = 0, vidas = 3, tiempo = 50;
+    let estado = 'INICIO', vehiculo = 'motero', score = 0, vidas = 3, tiempo = 100;
     let scrollY = 0, carril = 1, obstaculos = [], itemsF2 = [], gas = 100, framesF2 = 0;
     let modoPuente = false, frameParpadeo = 0;
     
+    // TAMAÑOS FASE 1 (Aumentados)
     const player = { x: GW/2, y: GH-200, w: 120, h: 160, vy: 0, saltos: 0 };
+    const obsSize = 110; // Tamaño de obstáculos y pollos aumentado
 
     function actualizarVidasUI() {
         const box = document.getElementById('lives-box');
@@ -105,7 +108,6 @@
         document.getElementById('timer-display').style.display = 'block';
         document.getElementById('score-box').style.display = 'block';
         document.getElementById('lives-box').style.display = 'flex';
-        tiempo = 50;
         audio.bg1.loop = true; audio.bg1.play();
         actualizarVidasUI();
         estado = 'JUGANDO_F1';
@@ -113,9 +115,6 @@
 
     function finalizarFase1() {
         estado = 'VIDEO1'; audio.bg1.pause();
-        document.getElementById('timer-display').style.display = 'none';
-        document.getElementById('score-box').style.display = 'none';
-        document.getElementById('lives-box').style.display = 'none';
         const vid = document.getElementById('video-fase1');
         vid.src = (vehiculo === 'motero') ? 'moto_final.mp4' : 'coche_final.mp4';
         vid.style.display = 'block'; vid.play();
@@ -133,8 +132,7 @@
     window.iniciarJuegoFase2 = function() {
         document.getElementById('tut2').style.display = 'none';
         document.getElementById('ui-f2').style.display = 'flex';
-        document.getElementById('timer-display').style.display = 'block';
-        gas = 100; framesF2 = 0; itemsF2 = []; tiempo = 50;
+        gas = 100; framesF2 = 0; itemsF2 = [];
         player.x = 80; player.y = GH * 0.7;
         generarItemsF2();
         audio.bg2.loop = true; audio.bg2.play();
@@ -147,16 +145,16 @@
         for (let i = 0; i < total; i++) {
             let tipo, img, fTarget = (i + 1) * intervalo;
             let r = Math.random();
-            let w = 80, h = 80;
+            let w = 80, h = 80; // Tamaños base
             
             if (i === 45) { tipo='comida'; img=imgs.comida; }
             else if (i === total-2) { tipo='veneno'; img=imgs.veneno; }
             else if (r < 0.25) { tipo='pollo'; img=imgs.pollo; }
-            else if (r < 0.50) { tipo='bueno'; img=imgs.bueno; w=140; h=80; } // MÁS ANCHO Y BAJO
+            else if (r < 0.50) { tipo='bueno'; img=imgs.bueno; w=110; h=110; } // BUENO MÁS GRANDE
             else if (r < 0.75) { tipo='malo'; img=imgs.malo1; }
-            else { tipo='malo'; img=imgs.malo2; w=60; h=60; }
+            else { tipo='malo'; img=imgs.malo2; w=60; h=60; } // MALO2 MÁS PEQUEÑO
             
-            itemsF2.push({ fTarget, x: GW + 200, yB: [15, 165, 315][Math.floor(Math.random()*3)], tipo, img, w, h, rec: false });
+            itemsF2.push({ fTarget, x: GW + 200, yB: [20, 165, 315][Math.floor(Math.random()*3)], tipo, img, w, h, rec: false });
         }
     }
 
@@ -185,9 +183,8 @@
 
             for (let i = obstaculos.length - 1; i >= 0; i--) {
                 let o = obstaculos[i]; o.y += 8;
-                let s = (o.tipo === 'guardia') ? 140 : 110; // GUARDIA MÁS GRANDE
-                ctx.drawImage(imgs[o.tipo], o.x, o.y, s, s);
-                if (player.x < o.x+s-30 && player.x+player.w > o.x+30 && player.y < o.y+s-30 && player.y+player.h > o.y+30) {
+                ctx.drawImage(imgs[o.tipo], o.x, o.y, obsSize, obsSize);
+                if (player.x < o.x+obsSize-30 && player.x+player.w > o.x+30 && player.y < o.y+obsSize-30 && player.y+player.h > o.y+30) {
                     if(o.tipo === 'pollo') { 
                         score += 100; audio.point.play(); document.getElementById('score').innerText = score;
                     } else {
@@ -197,13 +194,8 @@
                     obstaculos.splice(i, 1);
                 }
             }
-            tiempo -= (50/60) / 50; // Ajuste para que dure los 50s
-            document.getElementById('timer-display').innerText = Math.ceil(Math.max(0, tiempo * 1)); 
-            // Para simplificar, usamos una cuenta regresiva visual directa:
-            let displayTime = Math.ceil((1 - (scrollY_total / GH_fase)) * 50); // Pero mejor usamos frames:
-            if(tiempo > 0) tiempo -= 1/60;
-            document.getElementById('timer-display').innerText = Math.max(0, Math.ceil(tiempo));
-
+            tiempo -= 1/60;
+            document.getElementById('timer-display').innerText = Math.ceil(Math.max(0, tiempo));
             if(tiempo <= 5) modoPuente = true;
             if(tiempo <= 0) finalizarFase1();
         }
@@ -212,15 +204,12 @@
             let prog = framesF2 / 6000;
             if (prog < 1) framesF2++;
             
-            // Contador Fase 2: De 50 a 0
-            let tiempoF2 = Math.ceil(50 - (prog * 50));
-            document.getElementById('timer-display').innerText = tiempoF2;
-
             const altJ = GH * 0.45; const margS = (GH - altJ) / 2;
             if(imgs.fondoF2.complete) {
                 let ratio = imgs.fondoF2.width / imgs.fondoF2.height;
                 let aF = altJ * ratio;
-                ctx.drawImage(imgs.fondoF2, -(prog * (aF - GW)), margS, aF, altJ);
+                let xFondo = -(prog * (aF - GW));
+                ctx.drawImage(imgs.fondoF2, xFondo, margS, aF, altJ);
             }
             ctx.fillStyle = "black"; ctx.fillRect(0, 0, GW, margS); ctx.fillRect(0, margS + altJ, GW, GH);
 
@@ -231,11 +220,9 @@
                     ctx.drawImage(it.img, it.x, yPos, it.w, it.h);
                     if(player.x < it.x+it.w-20 && player.x+100 > it.x+20 && player.y < yPos+it.h-20 && player.y+160 > yPos+20) {
                         it.rec = true;
-                        if(it.tipo==='pollo'){ score+=100; audio.point.play(); }
-                        if(it.tipo==='comida'){ gas=100; score+=500; audio.point.play(); } // GAS A 100
+                        if(it.tipo==='pollo' || it.tipo==='comida'){ score+=100; audio.point.play(); }
                         if(it.tipo==='bueno'){ gas=Math.min(100, gas+15); audio.bueno.play(); }
-                        if(it.tipo==='malo'){ gas-=10; audio.malo.play(); }
-                        if(it.tipo==='veneno'){ gas=0; audio.malo.play(); } // GAS A 0
+                        if(it.tipo==='malo' || it.tipo==='veneno'){ gas-=10; audio.malo.play(); }
                         document.getElementById('scoreF2').innerText = score;
                         document.getElementById('gasF2').innerText = Math.floor(gas);
                     }
@@ -249,17 +236,20 @@
 
             if(gas <= 0) location.reload();
             
+            // FINAL FASE 2: Stop y Vídeo
             if(prog >= 1) {
                 estado = 'VIDEO2';
                 canvas.style.display = 'none';
                 document.getElementById('ui-f2').style.display = 'none';
-                document.getElementById('timer-display').style.display = 'none';
                 const v2 = document.getElementById('video-fase2');
                 v2.style.display = 'block'; v2.play();
+                
+                // Descenso de volumen (Fade out)
                 let volInterval = setInterval(() => {
                     if (audio.bg2.volume > 0.05) audio.bg2.volume -= 0.05;
                     else { audio.bg2.pause(); clearInterval(volInterval); }
                 }, 200);
+
                 v2.onended = () => location.reload();
             }
         }
@@ -282,7 +272,7 @@
             const r = Math.random();
             let t = 'guardia';
             if (r < 0.15) t = 'pollo'; else if (r < 0.30) t = 'pizza';
-            obstaculos.push({ x: (GW/3)*Math.floor(Math.random()*3) + (GW/6)-60, y: -150, tipo: t }); 
+            obstaculos.push({ x: (GW/3)*Math.floor(Math.random()*3) + (GW/6)-obsSize/2, y: -120, tipo: t }); 
         } 
     }, 900);
 
